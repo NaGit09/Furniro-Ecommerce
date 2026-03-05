@@ -1,0 +1,46 @@
+package com.example.backend.database.entity.User;
+import com.example.backend.common.enums.User.LoginType;
+import com.example.backend.common.enums.User.Role;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "Account")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class Account {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer accountID;
+
+    @Column(unique = true, nullable = false, length = 150)
+    private String email;
+
+    @Column(length = 20)
+    private String phone;
+
+    private String passwordHash;
+    private String providerID;
+
+    @Enumerated(EnumType.STRING)
+    private LoginType loginType = LoginType.NORMAL;
+
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.CUSTOMER;
+
+    private Boolean active = false;
+    private Boolean banned = false;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    // Quan hệ 1-1 với User
+    @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
+    private User user;
+}
