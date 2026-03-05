@@ -1,4 +1,13 @@
 package com.example.backend.dto.API;
 
-public class AType {
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+
+@Getter
+@Setter
+@SuperBuilder
+public abstract class AType {
+    private int code;
+    private String message;
 }

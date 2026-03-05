@@ -16,10 +16,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer userID;
 
-    @Column(unique = true, nullable = false, length = 50)
-    private String userName;
-
+    @Column(length = 50, nullable = false)
     private String firstName;
+
+    @Column(length = 50, nullable = false)
     private String lastName;
 
     @Enumerated(EnumType.STRING)

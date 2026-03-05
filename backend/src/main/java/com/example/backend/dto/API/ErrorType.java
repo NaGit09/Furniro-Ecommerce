@@ -1,10 +1,12 @@
-package com.example.backend.common.API;
+package com.example.backend.dto.API;
 
-import lombok.Data;
 
-@Data
-public class ErrorType <T> {
-    private String code;
-    private String message;
-    private T data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+@Getter
+@Setter
+@SuperBuilder
+
+public class ErrorType extends AType {
 }

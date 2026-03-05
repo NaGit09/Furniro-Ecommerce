@@ -16,6 +16,9 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer accountID;
 
+    @Column(unique = true, nullable = false, length = 50 , name = "UserName")
+    private String userName;
+
     @Column(unique = true, nullable = false, length = 150)
     private String email;
 
@@ -23,6 +26,7 @@ public class Account {
     private String phone;
 
     private String passwordHash;
+
     private String providerID;
 
     @Enumerated(EnumType.STRING)
@@ -32,6 +36,7 @@ public class Account {
     private Role role = Role.CUSTOMER;
 
     private Boolean active = false;
+
     private Boolean banned = false;
 
     @CreationTimestamp

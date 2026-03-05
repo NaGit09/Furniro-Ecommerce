@@ -1,12 +1,13 @@
-package com.example.backend.common.API;
+package com.example.backend.dto.API;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
-@Data
-@Builder
-public class ApiType <T> {
-    public int code;
-    public String message;
-    public T data;
+
+@Getter
+@Setter
+@SuperBuilder
+public class ApiType<T> extends AType {
+    private T data;
 }

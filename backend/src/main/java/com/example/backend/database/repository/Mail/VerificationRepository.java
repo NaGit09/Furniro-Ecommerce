@@ -7,7 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface MailRepository extends JpaRepository<VerificationToken , Integer> {
+public interface VerificationRepository extends JpaRepository<VerificationToken , Integer> {
     Optional<VerificationToken> findByToken(String token);
 
+    void removeByToken(String token);
 }

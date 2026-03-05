@@ -15,10 +15,15 @@ public class Address {
     private Integer addressID;
 
     private String receiverName;
+
     private String receiverPhone;
+
     private String province;
+
     private String district;
+
     private String ward;
+
     private String street;
 
     private Boolean isDefault = false;

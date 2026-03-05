@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExistingToken {
+public class ExistingTokens {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
