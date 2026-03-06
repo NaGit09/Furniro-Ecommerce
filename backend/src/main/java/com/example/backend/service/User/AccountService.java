@@ -24,6 +24,7 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -185,7 +186,8 @@ public class AccountService {
         }
 
         // 6. Lấy thông tin User (Profile)
-        User user = userRepository.findByAccount(account);
+        User user = userRepository.findByAccount(account)
+                .orElseThrow(() -> new UsernameNotFoundException(account.getUserName()));
 
         // 7. Trả về kết quả
         LoginRes res = LoginRes.builder()

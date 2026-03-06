@@ -13,5 +13,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @EntityGraph(attributePaths = {"addresses"})
     Optional<User> findWithAddressesByUserID(Integer userID);
 
-    User findByAccount(Account account);
+    Optional<User> findByAccount(Account account);
 }

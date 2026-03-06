@@ -32,6 +32,10 @@ spring:
           starttls:
             enable: true
 
+cloudinary:
+  cloud_name : ${CLOUDINARY_NAME}
+  api_key : ${CLOUDINARY_KEY}
+  api_secret : ${CLOUDINARY_SECRET}
 
 server:
   servlet:
