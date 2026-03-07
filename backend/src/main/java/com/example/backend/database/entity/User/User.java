@@ -22,10 +22,14 @@ public class User {
     @Column(length = 50, nullable = false)
     private String lastName;
 
+    @Column(length = 50, nullable = false)
+    private String AvatarID= "DEFAULT_AVATAR";
+
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    private String avatar = "default_avatar.png";
+    private String avatar = "https://res.cloudinary.com/dvi3xlou4/image/upload/v1748789340/user_rk7e65.png";
+
     private LocalDate dateOfBirth;
 
     @OneToOne

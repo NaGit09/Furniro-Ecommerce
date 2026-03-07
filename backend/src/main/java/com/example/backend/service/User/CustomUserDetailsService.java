@@ -19,11 +19,11 @@ public class CustomUserDetailsService  implements UserDetailsService {
     @NonNull
     public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
 
-        // lấy thông tin user từ database với gmail
+        // Load user info form database
         Account user = accountRepository.findByUserName(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
-        // trả về user context cho security xác thực
+        // Return user context for spring security
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUserName())
                 .password(user.getPasswordHash())

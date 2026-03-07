@@ -24,13 +24,6 @@ public class ExistingTokens {
     @Column(name = "TokenType")
     private String tokenType; // "REFRESH"
 
-    private boolean revoked;
-
-    private boolean expired;
-
-    @Column(name = "ExpireDate", nullable = false)
-    private LocalDateTime expiryDate;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "AccountID")
     private Account account;

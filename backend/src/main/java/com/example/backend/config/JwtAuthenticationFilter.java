@@ -40,33 +40,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
-        // 1. Kiểm tra Header xem có chứa Bearer Token không
+        // 1. Check whether client was attached token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt); // Lấy username từ token
+        username = jwtService.extractUsername(jwt);
 
-        logger.info(username);
-        // 2. Nếu có username và chưa được xác thực trong SecurityContext
+        // 2. Check username and security context
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(username);
+            if (jwtService.validateToken(jwt, "ACCESS")) {
+                UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(username);
 
-            // 3. Kiểm tra token có khớp với user và còn hạn không
-            if (jwtService.isTokenValid(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
+
+
+            // 3. Check token is access token and token has expired
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // 4. Xác nhận user đã login thành công vào hệ thống
+                // 4. Save user data context
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
+        // forward request to controller
         filterChain.doFilter(request, response);
     }
 }

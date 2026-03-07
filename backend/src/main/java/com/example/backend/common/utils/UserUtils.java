@@ -1,7 +1,11 @@
 package com.example.backend.common.utils;
 
+import com.example.backend.service.Other.RedisService;
+import lombok.RequiredArgsConstructor;
+
 import java.util.UUID;
 
+@RequiredArgsConstructor
 public class UserUtils {
 
     public static String generateUniqueUsername() {

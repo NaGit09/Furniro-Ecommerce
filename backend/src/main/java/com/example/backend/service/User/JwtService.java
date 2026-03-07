@@ -55,17 +55,20 @@ public class JwtService {
                 .compact();
     }
 
+    public boolean validateToken(String token, String tokenType) {
+        try {
+            // Nếu token hết hạn hoặc sai signature, dòng dưới đây sẽ văng Exception ngay
+            Claims claims = extractAllClaims(token);
 
-    // 5. Kiểm tra Token hợp lệ
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+            boolean isCorrectType = claims.get("type").toString().equalsIgnoreCase(tokenType);
+            boolean isNotExpired = !claims.getExpiration().before(new Date());
+
+            return isCorrectType && isNotExpired;
+        } catch (Exception e) {
+            // Nếu có bất kỳ lỗi nào (hết hạn, sai key, token rác), trả về false luôn cho an toàn
+            return false;
+        }
     }
-
-    private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
-    }
-
     // 6. Parse Claims (Cách dùng Parser mới)
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
