@@ -2,6 +2,7 @@ package com.example.backend.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,10 +14,16 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.util.List;
 
 @Configuration
@@ -43,8 +50,11 @@ public class SecurityConfig {
             "/swagger-resources/**"
     };
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
+    @Value("${JWT_SECRET_KEY}")
+    private String secretKey;
 
+    @Value("${JWT_ALGORITHM}")
+    private String algorithm;
 
     @Bean
     // Create hash password utils
@@ -55,6 +65,16 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        SecretKey key = new SecretKeySpec(
+                secretKey.getBytes(),
+                algorithm
+        );
+
+        return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
     @Bean
@@ -82,21 +102,25 @@ public class SecurityConfig {
 
                 // handle exception authorize
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            // Lỗi 401: Chưa đăng nhập hoặc Token lởm
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized - Please login");
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            // Lỗi 403: Đã login nhưng không đủ quyền (Ví dụ: Role USER vào vùng ADMIN)
-                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden - You don't have permission");
-                        })
-                )
-                // filter request to jwt authentication
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // manage session
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .authenticationEntryPoint(
+                                (request, response, authException) -> {
+                                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                            "Unauthorized - Please login");
+                                })
+
+                        .accessDeniedHandler(
+                                (request, response, accessDeniedException) -> {
+                                    response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                                            "Forbidden - You don't have permission");
+                                })
+                )
+
+                // filter request to jwt authentication
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> {
+                                }
+                        )
                 );
 
         return http.build();

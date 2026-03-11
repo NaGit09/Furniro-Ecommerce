@@ -6,6 +6,8 @@ import lombok.Getter;
 public enum UserErrorCode {
     INVALID_TOKEN(401 , "Invalid token"),
     USER_NOT_FOUND(404, "User not exists"),
+    PROFILE_NOT_FOUND(404, "User not exists"),
+    ADDRESS_NOT_FOUND(404, "User not exists"),
     TOKEN_EXPIRED(401, "Your session has expired"),
     INVALID_PASSWORD(400, "Incorrect password"),
     EMAIL_ALREADY_EXISTS(409, "Email has already exists"),
@@ -16,8 +18,8 @@ public enum UserErrorCode {
     OTP_NOT_MATCH(401,"Incorrect OTP"),
     OTP_EXPIRED(401,"Your OTP has expired"),
     PASSWORD_NOT_MATCH(401,"Incorrect password"),
-    UPDATE_USER_FAILED(404,"User update failed")
-
+    UPDATE_USER_FAILED(404,"User update failed"),
+    VARIFY_FAILED(401,"User vifies an error");
 
     ;
 

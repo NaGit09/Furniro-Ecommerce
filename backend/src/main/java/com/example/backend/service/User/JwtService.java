@@ -40,13 +40,13 @@ public class JwtService {
     }
 
     public String generateToken(Account account, String tokenType) {
-        // Xác định thời gian hết hạn dựa trên loại token
+
         long expirationTime = tokenType.equalsIgnoreCase("ACCESS")
                 ? accessExpiration
                 : refreshExpiration;
 
         return Jwts.builder()
-                .subject(account.getUserName()) // Đảm bảo đúng getter của bạn
+                .subject(account.getUserName())
                 .claim("role", account.getRole())
                 .claim("type", tokenType)
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -57,7 +57,6 @@ public class JwtService {
 
     public boolean validateToken(String token, String tokenType) {
         try {
-            // Nếu token hết hạn hoặc sai signature, dòng dưới đây sẽ văng Exception ngay
             Claims claims = extractAllClaims(token);
 
             boolean isCorrectType = claims.get("type").toString().equalsIgnoreCase(tokenType);
@@ -65,11 +64,10 @@ public class JwtService {
 
             return isCorrectType && isNotExpired;
         } catch (Exception e) {
-            // Nếu có bất kỳ lỗi nào (hết hạn, sai key, token rác), trả về false luôn cho an toàn
             return false;
         }
     }
-    // 6. Parse Claims (Cách dùng Parser mới)
+
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())

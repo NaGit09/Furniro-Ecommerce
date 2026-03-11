@@ -1,5 +1,6 @@
 package com.example.backend.service.User;
 
+import com.example.backend.common.enums.User.UserErrorCode;
 import com.example.backend.database.entity.User.Account;
 import com.example.backend.database.entity.User.Address;
 import com.example.backend.database.entity.User.User;
@@ -10,6 +11,7 @@ import com.example.backend.dto.API.AType;
 import com.example.backend.dto.API.ApiType;
 import com.example.backend.dto.Request.User.UpdateProfile;
 import com.example.backend.dto.Response.Other.CloudinaryResponse;
+import com.example.backend.exception.UserException;
 import com.example.backend.service.Other.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -35,15 +37,15 @@ public class UserService {
 
         // 1. Fetch data
         Account account = accountRepository.findByUserName(currentUsername)
-                .orElseThrow(() -> new UsernameNotFoundException("Account not found: " + currentUsername));
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
         User user = userRepository.findByAccount(account)
-                .orElseThrow(() -> new RuntimeException("User profile not found for: " + currentUsername));
+                .orElseThrow(() -> new UserException(UserErrorCode.PROFILE_NOT_FOUND));
 
         Address address = addressRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Address not found for user: " + user.getUserID()));
+                .orElseThrow(() -> new UserException(UserErrorCode.ADDRESS_NOT_FOUND));
 
-        // 2. Update Account (Cẩn thận với việc đổi username)
+
         if (request.getUsername() != null && !request.getUsername().equals(currentUsername)) {
             if (accountRepository.existsByUserName(request.getUsername())) {
                 throw new RuntimeException("Username already exists!");
@@ -54,22 +56,19 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             account.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
+
         if (request.getEmail() != null) {
-
             account.setEmail(request.getEmail());
-
         }
 
         if (request.getPhone() != null) {
-
             account.setPhone(request.getPhone());
-
         }
 
         // 3. Update User Info
         if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
 
-            // 4. Remove old avatar
+            // 4. Remove old avatar , Not remove default avatar
             if(!user.getAvatarID().equals("DEFAULT_AVATAR")) {
                 boolean isDeleted = cloudinaryService.deleteFile(user.getAvatarID());
                 if(!isDeleted) {

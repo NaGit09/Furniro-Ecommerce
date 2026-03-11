@@ -15,6 +15,7 @@ import com.example.backend.database.repository.User.UserRepository;
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.API.ApiType;
 import com.example.backend.dto.Request.User.ChangePasswordReq;
+import com.example.backend.dto.Request.User.ConfirmOTP;
 import com.example.backend.dto.Request.User.LoginReq;
 import com.example.backend.dto.Request.User.RegisterReq;
 import com.example.backend.dto.Response.User.LoginRes;
@@ -204,9 +205,10 @@ public class AccountService {
 
         // 1. check token is refresh token and token don't expired
         boolean isValid = jwtService.validateToken(token,"REFRESH");
+        log.info("authentication status : {}", isValid);
 
-        if (isValid) {
-            throw new UserException(UserErrorCode.INVALID_TOKEN);
+        if (!isValid) {
+            throw new UserException(UserErrorCode.VARIFY_FAILED);
         }
 
         // 2. Get Existing Token from DB
@@ -260,10 +262,10 @@ public class AccountService {
         return ResponseEntity.ok().body(success);
     }
 
-    public ResponseEntity<AType> confirmOTP(@NonNull String otp) {
+    public ResponseEntity<AType> confirmOTP(@NonNull ConfirmOTP confirmOTP) {
 
         // 1. Get OTP from Redis
-        String optKey = "Account-OPT" + otp;
+        String optKey = "OTP:" + confirmOTP.getEmail();
 
         String otpExist = redisService.getData(optKey);
 
@@ -273,7 +275,7 @@ public class AccountService {
         }
 
         // 3. Check OTP matched
-        if (!otp.equals(otpExist)) {
+        if (!otpExist.equals(confirmOTP.getOtp())) {
             throw new UserException(UserErrorCode.OTP_NOT_MATCH);
         }
 

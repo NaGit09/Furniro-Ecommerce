@@ -16,6 +16,7 @@ import java.util.Map;
 public class CloudinaryService {
 
     private final Cloudinary cloudinary;
+
     @Value("${cloudinary.cloud_name}")
     private String cloudName;
 
@@ -26,7 +27,6 @@ public class CloudinaryService {
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new IllegalArgumentException("Chỉ cho phép upload tệp tin hình ảnh!");
         }
-
 
         try {
             // 2. Send file to cloudinary and get response

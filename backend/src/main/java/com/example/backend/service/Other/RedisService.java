@@ -14,7 +14,6 @@ public class RedisService {
 
     @Async
     public void addData(String key, String value, long timeout, TimeUnit unit) {
-        // Sử dụng hàm set(key, value, timeout, unit)
         caching.opsForValue().set(key, value, timeout, unit);
     }
 
@@ -26,6 +25,7 @@ public class RedisService {
     public boolean isCaching (String key) {
         return caching.hasKey(key);
     }
+
     public String getData(String key) {
         return caching.opsForValue().get(key);
     }

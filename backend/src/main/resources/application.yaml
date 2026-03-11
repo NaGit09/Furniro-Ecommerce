@@ -1,7 +1,11 @@
 spring:
   application:
     name: backend
-
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET_KEY}
   devtools:
     add-properties: false
   data:
