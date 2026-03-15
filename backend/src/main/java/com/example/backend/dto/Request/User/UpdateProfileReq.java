@@ -9,7 +9,7 @@ import java.time.LocalDate;
 
 @Data
 
-public class UpdateProfile {
+public class UpdateProfileReq {
 
     private String username;
     private String email;
