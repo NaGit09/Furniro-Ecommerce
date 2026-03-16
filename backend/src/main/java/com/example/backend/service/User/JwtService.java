@@ -40,13 +40,13 @@ public class JwtService {
     }
 
     public String generateToken(Account account, String tokenType) {
-        // Xác định thời gian hết hạn dựa trên loại token
+
         long expirationTime = tokenType.equalsIgnoreCase("ACCESS")
                 ? accessExpiration
                 : refreshExpiration;
 
         return Jwts.builder()
-                .subject(account.getUserName()) // Đảm bảo đúng getter của bạn
+                .subject(account.getUserName())
                 .claim("role", account.getRole())
                 .claim("type", tokenType)
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -55,18 +55,19 @@ public class JwtService {
                 .compact();
     }
 
+    public boolean validateToken(String token, String tokenType) {
+        try {
+            Claims claims = extractAllClaims(token);
 
-    // 5. Kiểm tra Token hợp lệ
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+            boolean isCorrectType = claims.get("type").toString().equalsIgnoreCase(tokenType);
+            boolean isNotExpired = !claims.getExpiration().before(new Date());
+
+            return isCorrectType && isNotExpired;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
-    }
-
-    // 6. Parse Claims (Cách dùng Parser mới)
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())

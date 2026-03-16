@@ -34,3 +34,4 @@ public class ProductController {
             return  productService.compareProducts(ids);
     }
     }
+

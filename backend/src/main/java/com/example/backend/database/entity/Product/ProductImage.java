@@ -6,7 +6,9 @@ import lombok.*;
 public class ProductImage {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer imageID;
+
     private String url;
+
     private Integer sortOrder = 0;
 
     @ManyToOne @JoinColumn(name = "ProductID")

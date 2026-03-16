@@ -11,7 +11,8 @@ public class ChangePasswordReq {
     private String email;
 
     @NotEmpty
-    private String oldPassword;
+    private String password;
+
     @NotEmpty
-    private String newPassword;
+    private String confirmPassword;
 }

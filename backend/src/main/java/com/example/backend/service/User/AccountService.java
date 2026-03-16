@@ -1,5 +1,6 @@
 package com.example.backend.service.User;
 
+import com.example.backend.common.enums.User.UserErrorCode;
 import com.example.backend.common.utils.UserUtils;
 import com.example.backend.database.entity.Email.VerificationToken;
 import com.example.backend.database.entity.User.Account;
@@ -13,24 +14,28 @@ import com.example.backend.database.repository.User.TokenRepository;
 import com.example.backend.database.repository.User.UserRepository;
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.API.ApiType;
-import com.example.backend.dto.API.ErrorType;
 import com.example.backend.dto.Request.User.ChangePasswordReq;
+import com.example.backend.dto.Request.User.ConfirmOTP;
 import com.example.backend.dto.Request.User.LoginReq;
 import com.example.backend.dto.Request.User.RegisterReq;
 import com.example.backend.dto.Response.User.LoginRes;
+import com.example.backend.exception.UserException;
 import com.example.backend.service.Other.MailService;
 import com.example.backend.service.Other.RedisService;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.function.IntSupplier;
 
 @Service
 @Slf4j
@@ -49,17 +54,15 @@ public class AccountService {
     private final RedisService redisService;
 
 
-    @Transactional // Đảm bảo tính toàn vẹn dữ liệu
-    public AType registerAccount(@NonNull RegisterReq registerReq) {
-        // 1. Kiểm tra Email tồn tại
+    @Transactional
+    public ResponseEntity<AType> registerAccount(@NonNull RegisterReq registerReq) {
+
+        // 1.Check email not existed
         if (accountRepository.existsByEmail(registerReq.getEmail())) {
-            return ErrorType.builder()
-                    .code(400)
-                    .message("Your email address is already in use.")
-                    .build();
+            throw new UserException(UserErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        // 2. Tạo Account (Thông tin đăng nhập)
+        // 2. Create new account
         Account account = new Account();
         account.setUserName(UserUtils.generateUniqueUsername());
         account.setEmail(registerReq.getEmail());
@@ -67,18 +70,19 @@ public class AccountService {
         account.setPasswordHash(passwordEncoder.encode(registerReq.getPassword()));
         account = accountRepository.save(account);
 
-        // 3. Tạo User (Thông tin cá nhân) & Address
+        // 3. Create new user
         User newUser = new User();
         newUser.setFirstName(registerReq.getFirstName());
         newUser.setLastName(registerReq.getLastName());
         newUser.setAccount(account);
         userRepository.save(newUser);
 
+        // 4. Create new address
         Address address = new Address();
         address.setUser(newUser);
         addressRepository.save(address);
 
-        // 4. Tạo Token kích hoạt
+        // 4. Create mail token for active new account
         String token = UserUtils.generateUUIDToken();
         VerificationToken verificationToken = new VerificationToken();
         verificationToken.setAccount(account);
@@ -86,110 +90,99 @@ public class AccountService {
         verificationToken.setExpiryDate(LocalDateTime.now().plusHours(24));
         verificationRepository.save(verificationToken);
 
-        // 5. Gửi Mail (Hãy đánh dấu @Async trong mailService.sendMail)
+        // 5. Send mail active account
         try {
             mailService.sendMailaActive(account, token);
         } catch (Exception e) {
-            // Log lỗi nhưng có thể cân nhắc cách xử lý nếu mail server chết
             log.error("Failed to send email: {}", e.getMessage());
         }
 
-        return ApiType.builder()
+        // 6. Return data for client
+        AType result = ApiType.builder()
                 .code(200)
                 .message("Registration successful. Please check your email to activate account.")
                 .data(true)
                 .build();
+
+        return ResponseEntity.ok().body(result);
     }
 
-    @Transactional // Quan trọng nhất: Giúp thực thi lệnh save và remove trong một giao dịch
-    public AType confirmActive(@NonNull String token) {
-        // 1. Tìm token
+    @Transactional
+    public ResponseEntity<AType> confirmActive(@NonNull String token) {
+
+        // 1. Find token in database
         VerificationToken verificationToken = verificationRepository.findByToken(token)
-                .orElse(null);
+                .orElseThrow(() -> new UserException(UserErrorCode.INVALID_ACTIVE_TOKEN));
 
-        if (verificationToken == null) {
-            return ErrorType.builder().code(400).message("Invalid token").build();
-        }
-
-        // 2. Lấy Account trực tiếp từ token (vì bạn đã dùng @OneToOne)
+        // 2. Throw exception if user not found
         Account account = verificationToken.getAccount();
+
         if (account == null) {
-            return ErrorType.builder().code(400).message("Account not found").build();
+            throw new UserException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 3. Cập nhật trạng thái
+        // 3. Update active state
         account.setActive(true);
         accountRepository.save(account);
 
-        // 4. Xóa token (Thao tác này gây ra lỗi nếu thiếu @Transactional)
+        // 4. Remove active token after user active accound successfully
         verificationRepository.removeByToken(token);
-
-        return ApiType.builder()
+        AType success = ApiType.builder()
                 .code(200)
                 .message("Account activated successfully")
                 .data(true)
                 .build();
+
+        return ResponseEntity.ok().body(success);
     }
 
-    public ApiType<LoginRes> loginAccount(@NonNull LoginReq loginReq) {
-        // 1. Tìm Account
+    public ResponseEntity<AType> loginAccount(@NonNull LoginReq loginReq) {
+
+        // 1. Check account existed
         Account account = accountRepository.findByEmail(loginReq.getEmail())
-                .orElse(null);
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        if (account == null) {
-            return ApiType.<LoginRes>builder().code(401).message("Invalid email or password").build();
-        }
-
-        // 2. Kiểm tra trạng thái tài khoản
+        // 2. Check user was active or baned account
         if (Boolean.FALSE.equals(account.getActive())) {
-            return ApiType.<LoginRes>builder().code(403).message("Account is not active").build();
+            throw new UserException(UserErrorCode.ACCOUNT_NOT_ACTIVE);
         }
 
         if (Boolean.TRUE.equals(account.getBanned())) {
-            return ApiType.<LoginRes>builder().code(403).message("Account is banned").build();
+            throw new UserException(UserErrorCode.ACCOUNT_IS_BANED);
         }
 
-        // 3. Kiểm tra Password
-        boolean isMatch = passwordEncoder.matches(loginReq.getPassword(), account.getPasswordHash());
-        if (!isMatch) {
-            return ApiType.<LoginRes>builder().code(401).message("Invalid email or password").build();
+        // 3. Check password is match
+        if (!passwordEncoder.matches(loginReq.getPassword(), account.getPasswordHash())) {
+            throw new UserException(UserErrorCode.INVALID_PASSWORD);
         }
 
-        // 4. Tạo Access Token (Luôn tạo mới mỗi lần login)
+        // 4. Sign access token
         String accessToken = jwtService.generateToken(account, "ACCESS");
 
-        // 5. Xử lý Refresh Token (Chỉ tạo mới khi cái cũ không dùng được nữa)
+        // 5. Find old refresh token if it has in DB
+        ExistingTokens existingToken = tokenRepository.findByAccount(account)
+                .orElse(new ExistingTokens());
+
         String refreshToken;
-        ExistingTokens existingToken = tokenRepository.findByAccount(account).orElse(null);
 
-        // LOGIC: Nếu CHƯA CÓ hoặc (CÓ nhưng ĐÃ HẾT HẠN hoặc BỊ HỦY) thì mới tạo mới
-        if (existingToken == null || existingToken.isExpired() || existingToken.isRevoked()) {
+        // 6. if refresh token not exist in DB , create new existing token and save to DB
+        if (existingToken.getToken() == null || jwtService.validateToken(existingToken.getToken(), "REFRESH")) {
+
             refreshToken = jwtService.generateToken(account, "REFRESH");
-
-            // Cập nhật hoặc tạo mới bản ghi Token trong DB
-            if (existingToken == null) {
-                existingToken = new ExistingTokens();
-                existingToken.setAccount(account);
-            }
-
+            existingToken.setAccount(account);
             existingToken.setToken(refreshToken);
             existingToken.setTokenType("REFRESH");
-            existingToken.setRevoked(false);
-            existingToken.setExpired(false);
-            // Lưu ý: Cần setExpiryDate khớp với logic của JWT (vd: 7 ngày sau)
-            existingToken.setExpiryDate(LocalDateTime.now().plusDays(7));
-
             tokenRepository.save(existingToken);
+
         } else {
-            // Nếu còn dùng được, lấy token cũ trả về luôn
             refreshToken = existingToken.getToken();
         }
 
-        // 6. Lấy thông tin User (Profile)
+        // 7. Get user info in DB
         User user = userRepository.findByAccount(account)
-                .orElseThrow(() -> new UsernameNotFoundException(account.getUserName()));
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        // 7. Trả về kết quả
+        // 8. Return data for client
         LoginRes res = LoginRes.builder()
                 .AccessToken(accessToken)
                 .RefreshToken(refreshToken)
@@ -200,139 +193,207 @@ public class AccountService {
                 .Email(account.getEmail())
                 .build();
 
-        return ApiType.<LoginRes>builder()
+        return ResponseEntity.ok(ApiType.<LoginRes>builder()
                 .code(200)
                 .message("Login successful")
                 .data(res)
-                .build();
+                .build());
     }
 
-    public AType logoutAccount(@NonNull String token) {
-        log.info(token);
-        ExistingTokens existingToken = tokenRepository.findByToken(token)
-                .orElse(null);
+    public ResponseEntity<AType> logoutAccount(@NonNull String token) {
 
-        if (existingToken == null) {
-            return ErrorType.builder().code(400).message("Invalid token").build();
+
+        // 1. check token is refresh token and token don't expired
+        boolean isValid = jwtService.validateToken(token,"REFRESH");
+        log.info("authentication status : {}", isValid);
+
+        if (!isValid) {
+            throw new UserException(UserErrorCode.VARIFY_FAILED);
         }
 
-        existingToken.setRevoked(true);
-        existingToken.setExpiryDate(LocalDateTime.now().plusHours(24));
-        tokenRepository.save(existingToken);
+        // 2. Get Existing Token from DB
+        ExistingTokens existingToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new UserException(UserErrorCode.INVALID_TOKEN));
 
-        return ApiType.builder()
+        // 3. Delete token , prevent user logout too much
+        tokenRepository.delete(existingToken);
+
+        // 4. Return result
+        AType success = ApiType.builder()
                 .code(200)
                 .message("Logout successful")
                 .data(true)
                 .build();
+
+        return ResponseEntity.ok().body(success);
     }
 
-    public AType sendOTP(@NonNull String email) {
-        // kiem tra user ton tai
+    public ResponseEntity<AType> sendOTP(@NonNull String email) {
 
-        Account account = accountRepository.findByEmail(email)
-                .orElse(null);
+        // 1. Check has OTP key in redis
+        String cachingKey = "OTP:" + email;
 
-        if (account == null) {
-            return ErrorType.builder().code(400).message("Invalid email").build();
+        boolean hasKey = redisService.isCaching(cachingKey);
+
+        if (hasKey) {
+            throw new UserException(UserErrorCode.OTP_EXPIRED);
         }
 
-        // tạo opt
+        // 2. Check user exists
+        Account account = accountRepository.findByEmail(email)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        // 3. Create random OTP
         String otp = String.valueOf(new Random().nextInt(899999) + 100000);
-        String cachingKey = "Account-OPT" + otp;
 
-        //send mail otp
-        mailService.sendMailOTP(account.getUserName(),email,otp);
+        // 4. Send OTP via MAIL
+        mailService.sendMailOTP(account.getUserName(), email, otp);
 
-        // luu caching vao redis
-        redisService.addData(cachingKey, otp);
+        // 5. Save OTP to Redis with TTL is 5 minutes
+        redisService.addData(cachingKey, otp, 5, TimeUnit.MINUTES);
 
-        return ApiType.builder()
+        // 6. Return result
+        AType success = ApiType.builder()
                 .code(200)
                 .message("OTP sent successfully")
                 .data(true)
                 .build();
 
+        return ResponseEntity.ok().body(success);
     }
 
-    public AType confirmOTP(@NonNull String otp) {
+    public ResponseEntity<AType> confirmOTP(@NonNull ConfirmOTP confirmOTP) {
 
-        String optKey = "Account-OPT" + otp;
+        // 1. Get OTP from Redis
+        String optKey = "OTP:" + confirmOTP.getEmail();
 
         String otpExist = redisService.getData(optKey);
 
+        // 2. Check OTP existed
         if (otpExist == null) {
-            return ErrorType.builder().code(400).message("Invalid OTP").build();
+            throw new UserException(UserErrorCode.NOT_FOUND_OTP);
         }
 
-
-        if (!otp.equals(otpExist)) {
-            return ErrorType.builder().code(400).message("OTP is not match").build();
+        // 3. Check OTP matched
+        if (!otpExist.equals(confirmOTP.getOtp())) {
+            throw new UserException(UserErrorCode.OTP_NOT_MATCH);
         }
 
+        // 4. return result for user
         redisService.removeData(optKey);
-        return ApiType.builder()
+        AType success = ApiType.builder()
                 .code(200)
                 .message("OTP confirmed successfully")
                 .data(true)
                 .build();
+        return ResponseEntity.ok().body(success);
     }
 
-    public AType changePassword(ChangePasswordReq req) {
+    public ResponseEntity<AType> changePassword(ChangePasswordReq req) {
+        // 1. Check OTP is existed Redis
+        String cachingKey = "OTP:" + req.getEmail();
 
-        Account account = accountRepository.findByEmail(req.getEmail())
-                .orElse(null);
-
-        if (account == null) {
-            return ErrorType.builder().code(400).message("User not existed").build();
+        boolean hasKey = redisService.isCaching(cachingKey);
+        if (hasKey) {
+            throw new UserException(UserErrorCode.OTP_EXPIRED);
         }
 
-        String oldPassword = req.getOldPassword();
-        String newPassword = req.getNewPassword();
+        // 2.Check user existed
+        Account account = accountRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        // 3. Compare password
+        String oldPassword = req.getPassword();
+        String newPassword = req.getConfirmPassword();
 
         if (!oldPassword.equals(newPassword)) {
-            return ErrorType.builder().code(400).message("Passwords don't match").build();
+            throw new UserException(UserErrorCode.PASSWORD_NOT_MATCH);
         }
 
+        // 4. Save new password and return result
         account.setPasswordHash(passwordEncoder.encode(newPassword));
         accountRepository.save(account);
-        return ApiType.builder()
+
+        AType success = ApiType.builder()
                 .code(200)
                 .message("Password changed successfully")
                 .data(true)
                 .build();
+
+        return ResponseEntity.ok(success);
     }
 
-    public AType resetPassword (@NotEmpty int AccountID) {
-        Account account = accountRepository.findById(AccountID).orElse(null);
+    public ResponseEntity<AType> refreshToken(@NotEmpty String token) {
 
-        if (account == null) {
-            return ErrorType.builder().code(400).message("Account not existed").build();
+        // 1. check token is refresh token and token don't expired
+        boolean isValid = jwtService.validateToken(token,"REFRESH");
+
+        if (isValid) {
+            throw new UserException(UserErrorCode.INVALID_TOKEN);
         }
-        account.setPasswordHash(passwordEncoder.encode("furniro2026"));
-        accountRepository.save(account);
 
-        return ApiType.builder()
+        String username = jwtService.extractUsername(token);
+
+        // 2. Check user existed
+        Account account = accountRepository.findByUserName(username).orElseThrow(
+                () -> new UserException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        // 3. Sign access token and return result
+        String accessToken = jwtService.generateToken(account,"ACCESS");
+
+        return ResponseEntity.ok(ApiType.builder()
                 .code(200)
-                .message("User"+ account.getUserName() +" Deleted successfully")
-                .data(true)
-                .build();
+                .message("Token refreshed successfully")
+                .data(accessToken)
+                .build());
+
     }
 
-    public AType banAccount(@NotEmpty int AccountID) {
-        Account account = accountRepository.findById(AccountID).orElse(null);
+    // ADMIN API
 
-        if (account == null) {
-            return ErrorType.builder().code(400).message("Account not existed").build();
+    private ResponseEntity<AType> executeBulkUpdate(
+            List<Integer> accountIDs,
+            String successMessage,
+            IntSupplier updateLogic
+    ) {
+        // 1. Flash check user in list exist
+        long count = accountRepository.countByAccountIDIn(accountIDs);
+        if (count == 0) {
+            throw new UserException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        account.setBanned(true);
-        accountRepository.save(account);
+        // 2. Execute update logic
+        int result = updateLogic.getAsInt();
 
-        return ApiType.builder()
+        if (result == 0) {
+            throw new UserException(UserErrorCode.UPDATE_USER_FAILED);
+        }
+
+        // 3. Return data with ApiType format
+        AType success = ApiType.builder()
                 .code(200)
-                .message("Account banned successfully")
+                .message(successMessage + " for " + result + "/" + accountIDs.size() + " account")
                 .data(true)
                 .build();
+
+        return ResponseEntity.ok(success);
+    }
+
+    public ResponseEntity<AType> resetPassword(@NotEmpty List<Integer> ids) {
+        String hashPassword = passwordEncoder.encode("furniro2026");
+        return executeBulkUpdate(ids, "Reset password", () -> accountRepository.resetPasswords(ids, hashPassword));
+    }
+
+    public ResponseEntity<AType> banAccount(@NotEmpty List<Integer> ids) {
+        return executeBulkUpdate(ids, "Ban account", () -> accountRepository.banAccounts(ids));
+    }
+
+    public ResponseEntity<AType> unbanAccount(@NotEmpty List<Integer> ids) {
+        return executeBulkUpdate(ids, "Unban account", () -> accountRepository.unbanAccounts(ids));
+    }
+
+    public ResponseEntity<AType> deleteAccount(@NotEmpty List<Integer> ids) {
+        return executeBulkUpdate(ids, "Delete account", () -> accountRepository.deleteAccounts(ids));
     }
 }

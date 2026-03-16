@@ -2,12 +2,20 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.Request.User.ChangePasswordReq;
+import com.example.backend.dto.Request.User.ConfirmOTP;
 import com.example.backend.dto.Request.User.LoginReq;
 import com.example.backend.dto.Request.User.RegisterReq;
 import com.example.backend.service.User.AccountService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -21,50 +29,73 @@ public class AccountController {
     }
 
     @PostMapping("/register")
-    public AType registerAccount(@RequestBody RegisterReq registerReq) {
+    public ResponseEntity<AType> register(@RequestBody RegisterReq registerReq) {
         return accountService.registerAccount(registerReq);
     }
 
     @GetMapping("/confirm")
-    public AType confirmAccount(@RequestParam String token) {
+    public ResponseEntity<AType> confirm(@RequestParam String token) {
         return accountService.confirmActive(token);
     }
 
     @PostMapping("/login")
-    public AType loginAccount (@RequestBody LoginReq loginReq) {
+    public ResponseEntity<AType> login(@RequestBody LoginReq loginReq) {
         return accountService.loginAccount(loginReq);
     }
 
     @PostMapping("/logout")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'CUSTOMER')")
-    public AType logoutAccount(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.substring(7);
+    public ResponseEntity<AType> logout(Authentication authentication) {
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+        String token = jwtAuth.getToken().getTokenValue();
+        log.info("token : {}", token);
+
         return accountService.logoutAccount(token);
     }
+
     @PostMapping("/sendOTP")
-    public AType sendOPT(@RequestBody String email) {
+    public ResponseEntity<AType> sendOPT(@RequestBody String email) {
         return accountService.sendOTP(email);
     }
 
     @PostMapping("/confirmOTP")
-    public AType confirmOTP(@RequestBody String otp) {
-        return accountService.confirmOTP(otp);
+    public ResponseEntity<AType> confirmOTP(@RequestBody ConfirmOTP confirmOTP) {
+        return accountService.confirmOTP(confirmOTP);
     }
 
     @PostMapping("/changePassword")
-    public AType changePassword(@RequestBody ChangePasswordReq changePasswordReq) {
+    public ResponseEntity<AType> changePassword(@RequestBody ChangePasswordReq changePasswordReq) {
         return accountService.changePassword(changePasswordReq);
     }
 
-    @PostMapping("/resetPassword")
-    @PreAuthorize("hasRole('ADMIN')")
-    public AType resetPassword(@RequestBody int accountID) {
-        return accountService.resetPassword(accountID);
+    @PostMapping("/refresh")
+    public ResponseEntity<AType> refreshToken(@RequestHeader("Authorization") String token) {
+        String refreshToken = token.substring(7);
+        System.out.println(refreshToken);
+        return accountService.refreshToken(refreshToken);
     }
 
-    @PostMapping("/banAccount")
-    @PreAuthorize("hasRole('ADMIN')")
-    public AType banAccount(@RequestBody int accountId) {
-        return accountService.banAccount(accountId);
+    // ADMIN API
+    @PostMapping("/resetPassword")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AType> resetPassword(@RequestBody List<Integer> accountIDs) {
+        return accountService.resetPassword(accountIDs);
+    }
+
+    @PostMapping("/ban")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AType> ban(@RequestBody List<Integer> accountIDs) {
+        return accountService.banAccount(accountIDs);
+    }
+
+    @PostMapping("/unban")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AType> unban(@RequestBody List<Integer> accountIDs) {
+        return accountService.unbanAccount(accountIDs);
+    }
+
+    @PostMapping("/delete")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AType> delete(@RequestBody List<Integer> accountIDs) {
+        return accountService.deleteAccount(accountIDs);
     }
 }

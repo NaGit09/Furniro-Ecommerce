@@ -25,6 +25,7 @@ public class Account {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "PasswordHash")
     private String passwordHash;
 
     private String providerID;
@@ -35,9 +36,14 @@ public class Account {
     @Enumerated(EnumType.STRING)
     private Role role = Role.CUSTOMER;
 
+    @Column(name = "Active")
     private Boolean active = false;
 
+    @Column(name = "Banned")
     private Boolean banned = false;
+
+    @Column(name = "IsDeleted")
+    private Boolean isDeleted = false;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
