@@ -2,7 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.Request.User.ChangePasswordReq;
-import com.example.backend.dto.Request.User.ConfirmOTP;
+import com.example.backend.dto.Request.User.ConfirmOTPReq;
 import com.example.backend.dto.Request.User.LoginReq;
 import com.example.backend.dto.Request.User.RegisterReq;
 import com.example.backend.service.User.AccountService;
@@ -10,8 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,8 +56,8 @@ public class AccountController {
     }
 
     @PostMapping("/confirmOTP")
-    public ResponseEntity<AType> confirmOTP(@RequestBody ConfirmOTP confirmOTP) {
-        return accountService.confirmOTP(confirmOTP);
+    public ResponseEntity<AType> confirmOTP(@RequestBody ConfirmOTPReq confirmOTPReq) {
+        return accountService.confirmOTP(confirmOTPReq);
     }
 
     @PostMapping("/changePassword")

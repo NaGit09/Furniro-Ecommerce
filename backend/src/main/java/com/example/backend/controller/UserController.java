@@ -1,7 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.API.AType;
-import com.example.backend.dto.Request.User.UpdateProfile;
+import com.example.backend.dto.Request.User.UpdateProfileReq;
 import com.example.backend.service.User.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,7 +20,7 @@ public class UserController {
     private final UserService userService;
 
     @PatchMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public AType updateProfile(@AuthenticationPrincipal UserDetails currentUser, @ModelAttribute UpdateProfile request) {
+    public AType updateProfile(@AuthenticationPrincipal UserDetails currentUser, @ModelAttribute UpdateProfileReq request) {
         return userService.updateProfile(currentUser.getUsername(),request);
     }
 }

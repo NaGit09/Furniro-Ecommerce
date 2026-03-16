@@ -9,17 +9,15 @@ import com.example.backend.database.repository.User.AddressRepository;
 import com.example.backend.database.repository.User.UserRepository;
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.API.ApiType;
-import com.example.backend.dto.Request.User.UpdateProfile;
+import com.example.backend.dto.Request.User.UpdateProfileReq;
 import com.example.backend.dto.Response.Other.CloudinaryResponse;
 import com.example.backend.exception.UserException;
 import com.example.backend.service.Other.CloudinaryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -33,7 +31,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public AType updateProfile(String currentUsername, UpdateProfile request) {
+    public AType updateProfile(String currentUsername, UpdateProfileReq request) {
 
         // 1. Fetch data
         Account account = accountRepository.findByUserName(currentUsername)

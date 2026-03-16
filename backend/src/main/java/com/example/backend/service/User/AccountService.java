@@ -15,7 +15,7 @@ import com.example.backend.database.repository.User.UserRepository;
 import com.example.backend.dto.API.AType;
 import com.example.backend.dto.API.ApiType;
 import com.example.backend.dto.Request.User.ChangePasswordReq;
-import com.example.backend.dto.Request.User.ConfirmOTP;
+import com.example.backend.dto.Request.User.ConfirmOTPReq;
 import com.example.backend.dto.Request.User.LoginReq;
 import com.example.backend.dto.Request.User.RegisterReq;
 import com.example.backend.dto.Response.User.LoginRes;
@@ -262,10 +262,10 @@ public class AccountService {
         return ResponseEntity.ok().body(success);
     }
 
-    public ResponseEntity<AType> confirmOTP(@NonNull ConfirmOTP confirmOTP) {
+    public ResponseEntity<AType> confirmOTP(@NonNull ConfirmOTPReq confirmOTPReq) {
 
         // 1. Get OTP from Redis
-        String optKey = "OTP:" + confirmOTP.getEmail();
+        String optKey = "OTP:" + confirmOTPReq.getEmail();
 
         String otpExist = redisService.getData(optKey);
 
@@ -275,7 +275,7 @@ public class AccountService {
         }
 
         // 3. Check OTP matched
-        if (!otpExist.equals(confirmOTP.getOtp())) {
+        if (!otpExist.equals(confirmOTPReq.getOtp())) {
             throw new UserException(UserErrorCode.OTP_NOT_MATCH);
         }
 
