@@ -47,7 +47,10 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/webjars/**",
-            "/swagger-resources/**"
+            "/swagger-resources/**",
+            "/products",
+            "/product/{id}"
+            ,"/products/compare"
     };
 
     @Value("${JWT_SECRET_KEY}")
