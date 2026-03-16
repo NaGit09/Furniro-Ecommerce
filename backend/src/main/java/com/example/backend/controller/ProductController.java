@@ -30,7 +30,7 @@ public class ProductController {
         return productService.getProductDetail(id);
     }
     @GetMapping("/products/compare")
-    public List<ProductCompareRes> compareProducts(@RequestParam @Size(min = 2,max = 4) List<Integer> ids) {
+    public List<ProductCompareRes> compareProducts(@RequestParam @Size(min = 2,max = 3) List<Integer> ids) {
             return  productService.compareProducts(ids);
     }
     }
